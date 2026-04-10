@@ -1,0 +1,942 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Crypto Trading Dashboard</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0d0f14;
+      --surface: #13161e;
+      --surface2: #1a1e2a;
+      --border: rgba(255,255,255,0.07);
+      --border2: rgba(255,255,255,0.13);
+      --text: #e8eaf0;
+      --muted: #7a8099;
+      --accent: #3b7eff;
+      --accent2: #5a8fff;
+      --green: #1db87a;
+      --red: #e05252;
+      --amber: #e8a232;
+      --radius: 10px;
+      --radius-lg: 14px;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    /* ── TOP BAR ── */
+    .topbar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 18px;
+    }
+
+    .logo {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--accent2);
+      letter-spacing: 0.5px;
+      margin-right: 6px;
+    }
+
+    .coin-tabs { display: flex; gap: 6px; flex-wrap: wrap; flex: 1; }
+
+    .coin-tab {
+      padding: 6px 14px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border2);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      background: var(--surface);
+      color: var(--muted);
+      transition: all 0.15s;
+    }
+    .coin-tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .coin-tab:hover:not(.active) { background: var(--surface2); color: var(--text); }
+
+    .add-btn {
+      padding: 6px 14px;
+      border-radius: var(--radius);
+      border: 1px dashed var(--border2);
+      font-size: 13px;
+      cursor: pointer;
+      background: transparent;
+      color: var(--muted);
+      transition: all 0.15s;
+    }
+    .add-btn:hover { background: var(--surface2); color: var(--text); }
+
+    .live-badge {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 12px;
+      color: var(--muted);
+      margin-left: auto;
+    }
+    .dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--green);
+      animation: blink 1.2s ease-in-out infinite;
+    }
+    @keyframes blink { 0%,100% { opacity:1 } 50% { opacity:0.25 } }
+
+    /* ── METRICS ── */
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0,1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .metric-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 14px 16px;
+    }
+    .metric-label {
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      margin-bottom: 6px;
+    }
+    .metric-val { font-size: 22px; font-weight: 600; }
+    .metric-sub { font-size: 12px; margin-top: 3px; color: var(--muted); }
+    .up   { color: var(--green) !important; }
+    .down { color: var(--red)   !important; }
+
+    .strength-bar {
+      height: 4px;
+      border-radius: 2px;
+      background: var(--border2);
+      margin-top: 6px;
+      overflow: hidden;
+    }
+    .strength-fill {
+      height: 100%;
+      border-radius: 2px;
+      transition: width 0.4s, background 0.4s;
+    }
+
+    /* ── CHART ── */
+    .chart-wrap {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 16px;
+      margin-bottom: 16px;
+      position: relative;
+    }
+    .chart-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+    .chart-title { font-size: 14px; font-weight: 600; }
+
+    .tf-btns { display: flex; gap: 4px; margin-left: auto; }
+    .tf-btn {
+      padding: 4px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--border2);
+      font-size: 12px;
+      cursor: pointer;
+      background: transparent;
+      color: var(--muted);
+      transition: all 0.12s;
+    }
+    .tf-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .tf-btn:hover:not(.active) { background: var(--surface2); color: var(--text); }
+
+    .ind-toggles { display: flex; gap: 6px; flex-wrap: wrap; }
+    .ind-toggle {
+      padding: 4px 9px;
+      border-radius: 6px;
+      border: 1px solid var(--border2);
+      font-size: 11px;
+      cursor: pointer;
+      background: transparent;
+      color: var(--muted);
+      transition: all 0.12s;
+    }
+    .ind-toggle.on { border-color: var(--accent); color: var(--accent2); background: rgba(59,126,255,0.1); }
+
+    canvas#priceChart { width: 100% !important; }
+
+    .loading-overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--surface);
+      border-radius: var(--radius-lg);
+      z-index: 10;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    /* ── BOTTOM GRID ── */
+    .bottom-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 16px;
+    }
+    .panel-title {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      margin-bottom: 12px;
+    }
+
+    /* ── TA TABLE ── */
+    .ta-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 7px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+    }
+    .ta-row:last-child { border-bottom: none; }
+    .ta-name { color: var(--muted); }
+
+    .badge {
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .badge-sell    { background: rgba(224,82,82,0.15);  color: var(--red);   }
+    .badge-buy     { background: rgba(29,184,122,0.15); color: var(--green); }
+    .badge-neutral { background: var(--surface2);        color: var(--muted); }
+
+    .signal-summary { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+    .sig-pill {
+      padding: 4px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .sig-sell    { background: rgba(224,82,82,0.15);  color: var(--red);    border: 1px solid rgba(224,82,82,0.3);  }
+    .sig-buy     { background: rgba(29,184,122,0.15); color: var(--green);  border: 1px solid rgba(29,184,122,0.3); }
+    .sig-neutral { background: var(--surface2);        color: var(--muted);  border: 1px solid var(--border2); }
+
+    /* ── OCO BOX ── */
+    .oco-box {
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius);
+      padding: 14px;
+    }
+    .oco-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .oco-title { font-size: 13px; font-weight: 600; }
+    .oco-tag {
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      background: rgba(224,82,82,0.15);
+      color: var(--red);
+      border: 1px solid rgba(224,82,82,0.25);
+      font-weight: 600;
+    }
+    .oco-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .oco-item {
+      background: var(--surface);
+      border-radius: 8px;
+      padding: 9px 11px;
+      border: 1px solid var(--border);
+    }
+    .oco-item-label {
+      font-size: 10px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .oco-item-val { font-size: 14px; font-weight: 600; margin-top: 3px; }
+    .oco-item-val.sl     { color: var(--red);    }
+    .oco-item-val.tp     { color: var(--green);  }
+    .oco-item-val.entry  { color: var(--accent2);}
+    .oco-item-val.rr     { color: var(--amber);  }
+
+    .oco-footer {
+      margin-top: 10px;
+      font-size: 12px;
+      color: var(--muted);
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      padding-top: 10px;
+      border-top: 1px solid var(--border);
+    }
+
+    .no-signal {
+      color: var(--muted);
+      font-size: 13px;
+      padding: 20px 0;
+      text-align: center;
+      line-height: 1.8;
+    }
+
+    @media (max-width: 680px) {
+      .metrics       { grid-template-columns: 1fr 1fr; }
+      .bottom-grid   { grid-template-columns: 1fr; }
+      .tf-btns       { flex-wrap: wrap; }
+    }
+    @media (max-width: 400px) {
+      body { padding: 12px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- TOP BAR -->
+  <div class="topbar">
+    <span class="logo">◈ CryptoDesk</span>
+    <div class="coin-tabs" id="coinTabs"></div>
+    <button class="add-btn" onclick="showAddCoin()">+ Adicionar</button>
+    <div class="live-badge">
+      <div class="dot"></div>
+      <span id="connStatus">Conectando...</span>
+    </div>
+  </div>
+
+  <!-- METRICS -->
+  <div class="metrics">
+    <div class="metric-card">
+      <div class="metric-label">Preço atual</div>
+      <div class="metric-val" id="mPrice">—</div>
+      <div class="metric-sub" id="mChange">—</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Volume 24h</div>
+      <div class="metric-val" id="mVol">—</div>
+      <div class="metric-sub" id="mVolQ" style="color:var(--muted)">USDT</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Máx / Mín 24h</div>
+      <div class="metric-val" id="mHigh" style="font-size:16px">—</div>
+      <div class="metric-sub" id="mLow">—</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">RSI (14)</div>
+      <div class="metric-val" id="mRsi">—</div>
+      <div class="strength-bar">
+        <div class="strength-fill" id="rsiBar" style="width:50%;background:var(--accent)"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CHART -->
+  <div class="chart-wrap">
+    <div id="chartLoading" class="loading-overlay">Carregando dados históricos...</div>
+    <div class="chart-header">
+      <span class="chart-title" id="chartTitle">BTC/USDT</span>
+      <div class="tf-btns">
+        <button class="tf-btn active" onclick="setTF('1m',this)">1m</button>
+        <button class="tf-btn" onclick="setTF('5m',this)">5m</button>
+        <button class="tf-btn" onclick="setTF('15m',this)">15m</button>
+        <button class="tf-btn" onclick="setTF('1h',this)">1h</button>
+        <button class="tf-btn" onclick="setTF('4h',this)">4h</button>
+        <button class="tf-btn" onclick="setTF('1d',this)">1d</button>
+      </div>
+      <div class="ind-toggles">
+        <button class="ind-toggle on" id="toggleEMA" onclick="toggleInd('EMA',this)">EMA 9/21</button>
+        <button class="ind-toggle"    id="toggleBB"  onclick="toggleInd('BB',this)">Bollinger</button>
+        <button class="ind-toggle"    id="toggleVol" onclick="toggleInd('VOL',this)">Volume</button>
+      </div>
+    </div>
+    <canvas id="priceChart" height="300"></canvas>
+  </div>
+
+  <!-- BOTTOM -->
+  <div class="bottom-grid">
+    <div class="panel">
+      <div class="panel-title">Análise técnica</div>
+      <div id="taTable">—</div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Sugestão OCO</div>
+      <div id="ocoPanel">—</div>
+    </div>
+  </div>
+
+  <script>
+    /* ────────────────────────────────────────────
+       CONFIGURAÇÃO INICIAL
+    ──────────────────────────────────────────── */
+    const COINS  = ['BTCUSDT','ETHUSDT','SOLUSDT','AVAXUSDT','XRPUSDT'];
+    const LABELS = {
+      BTCUSDT:'BTC', ETHUSDT:'ETH', SOLUSDT:'SOL',
+      AVAXUSDT:'AVAX', XRPUSDT:'XRP'
+    };
+
+    let activeCoin   = 'BTCUSDT';
+    let activeTF     = '1m';
+    let ws           = null;
+    let chart        = null;
+    let priceHistory = [];
+    let liveData     = {};
+    let showEMA = true, showBB = false, showVol = false;
+
+    /* ────────────────────────────────────────────
+       UTILITÁRIOS
+    ──────────────────────────────────────────── */
+    function fmt(n, d = 2) {
+      if (n == null) return '—';
+      return Number(n).toLocaleString('en-US', {
+        minimumFractionDigits: d, maximumFractionDigits: d
+      });
+    }
+
+    function fmtK(n) {
+      if (n > 1e9) return (n / 1e9).toFixed(2) + 'B';
+      if (n > 1e6) return (n / 1e6).toFixed(2) + 'M';
+      if (n > 1e3) return (n / 1e3).toFixed(2) + 'K';
+      return n.toFixed(2);
+    }
+
+    /* ────────────────────────────────────────────
+       TABS / NAVEGAÇÃO
+    ──────────────────────────────────────────── */
+    function buildTabs() {
+      const el = document.getElementById('coinTabs');
+      el.innerHTML = '';
+      COINS.forEach(c => {
+        const b = document.createElement('button');
+        b.className = 'coin-tab' + (c === activeCoin ? ' active' : '');
+        b.textContent = LABELS[c] || c.replace('USDT','');
+        b.onclick = () => switchCoin(c);
+        el.appendChild(b);
+      });
+    }
+
+    function switchCoin(c) {
+      activeCoin = c;
+      buildTabs();
+      document.getElementById('chartTitle').textContent =
+        (LABELS[c] || c.replace('USDT','')) + '/USDT';
+      document.getElementById('chartLoading').style.display = 'flex';
+      priceHistory = [];
+      if (ws) ws.close();
+      loadHistory().then(() => { connectWS(); });
+    }
+
+    /* ────────────────────────────────────────────
+       API BINANCE — HISTÓRICO (REST)
+    ──────────────────────────────────────────── */
+    async function loadHistory() {
+      try {
+        const url =
+          `https://api.binance.com/api/v3/klines` +
+          `?symbol=${activeCoin}&interval=${activeTF}&limit=120`;
+        const r    = await fetch(url);
+        const data = await r.json();
+        priceHistory = data.map(k => ({
+          t:     k[0],
+          open:  parseFloat(k[1]),
+          high:  parseFloat(k[2]),
+          low:   parseFloat(k[3]),
+          close: parseFloat(k[4]),
+          vol:   parseFloat(k[5])
+        }));
+        renderChart();
+        updateAnalysis();
+        document.getElementById('chartLoading').style.display = 'none';
+      } catch (e) {
+        document.getElementById('chartLoading').textContent =
+          'Erro ao carregar dados. Verifique sua conexão.';
+        console.error(e);
+      }
+    }
+
+    /* ────────────────────────────────────────────
+       WEBSOCKET BINANCE — TEMPO REAL
+    ──────────────────────────────────────────── */
+    function connectWS() {
+      if (ws) { try { ws.close(); } catch(e) {} }
+
+      const ticker  = `${activeCoin.toLowerCase()}@ticker`;
+      const kline   = `${activeCoin.toLowerCase()}@kline_${activeTF}`;
+      const url     = `wss://stream.binance.com:9443/stream?streams=${ticker}/${kline}`;
+
+      ws = new WebSocket(url);
+
+      ws.onopen  = () => {
+        document.getElementById('connStatus').textContent = 'Ao vivo';
+      };
+      ws.onclose = () => {
+        document.getElementById('connStatus').textContent = 'Reconectando...';
+        setTimeout(() => connectWS(), 3000);
+      };
+      ws.onerror = () => {
+        document.getElementById('connStatus').textContent = 'Erro de conexão';
+      };
+
+      ws.onmessage = (e) => {
+        const msg = JSON.parse(e.data);
+        if (!msg.data) return;
+
+        /* Ticker — métricas gerais 24h */
+        if (msg.stream && msg.stream.includes('@ticker')) {
+          const d = msg.data;
+          liveData[activeCoin] = {
+            price:    parseFloat(d.c),
+            change:   parseFloat(d.P),
+            vol:      parseFloat(d.v),
+            high:     parseFloat(d.h),
+            low:      parseFloat(d.l),
+            quoteVol: parseFloat(d.q)
+          };
+          updateMetrics();
+        }
+
+        /* Kline — candle em tempo real */
+        if (msg.stream && msg.stream.includes('@kline')) {
+          const k  = msg.data.k;
+          const pt = {
+            t:     k.t,
+            open:  parseFloat(k.o),
+            high:  parseFloat(k.h),
+            low:   parseFloat(k.l),
+            close: parseFloat(k.c),
+            vol:   parseFloat(k.v)
+          };
+          const last = priceHistory[priceHistory.length - 1];
+          if (last && last.t === pt.t) {
+            priceHistory[priceHistory.length - 1] = pt;
+          } else {
+            priceHistory.push(pt);
+            if (priceHistory.length > 200) priceHistory.shift();
+          }
+          renderChart();
+          updateAnalysis();
+        }
+      };
+    }
+
+    /* ────────────────────────────────────────────
+       MÉTRICAS
+    ──────────────────────────────────────────── */
+    function updateMetrics() {
+      const d = liveData[activeCoin];
+      if (!d) return;
+
+      document.getElementById('mPrice').textContent = '$' + fmt(d.price);
+
+      const chEl = document.getElementById('mChange');
+      chEl.textContent = (d.change >= 0 ? '+' : '') + d.change.toFixed(2) + '%';
+      chEl.className   = 'metric-sub ' + (d.change >= 0 ? 'up' : 'down');
+
+      document.getElementById('mVol').textContent = fmtK(d.vol);
+
+      document.getElementById('mHigh').textContent = '$' + fmt(d.high);
+      document.getElementById('mLow').innerHTML =
+        `<span class="down">$${fmt(d.low)}</span>`;
+    }
+
+    /* ────────────────────────────────────────────
+       INDICADORES TÉCNICOS
+    ──────────────────────────────────────────── */
+
+    /* Exponential Moving Average */
+    function ema(arr, n) {
+      const k = 2 / (n + 1);
+      let e = [arr[0]];
+      for (let i = 1; i < arr.length; i++)
+        e.push(arr[i] * k + e[i - 1] * (1 - k));
+      return e;
+    }
+
+    /* RSI Wilder */
+    function calcRSI(closes, n = 14) {
+      if (closes.length < n + 2) return 50;
+      let gains = 0, losses = 0;
+      for (let i = 1; i <= n; i++) {
+        const d = closes[i] - closes[i - 1];
+        if (d > 0) gains += d; else losses -= d;
+      }
+      let ag = gains / n, al = losses / n;
+      for (let i = n + 1; i < closes.length; i++) {
+        const d = closes[i] - closes[i - 1];
+        ag = (ag * (n - 1) + (d > 0 ? d : 0)) / n;
+        al = (al * (n - 1) + (d < 0 ? -d : 0)) / n;
+      }
+      if (al === 0) return 100;
+      return 100 - (100 / (1 + ag / al));
+    }
+
+    /* Bollinger Bands (last N candles) */
+    function calcBB(closes, n = 20, mult = 2) {
+      const slice = closes.slice(-n);
+      const mid   = slice.reduce((a, b) => a + b) / slice.length;
+      const std   = Math.sqrt(
+        slice.map(c => (c - mid) ** 2).reduce((a, b) => a + b) / slice.length
+      );
+      return { upper: mid + mult * std, mid, lower: mid - mult * std };
+    }
+
+    /* MACD (12, 26, 9) */
+    function calcMACD(closes) {
+      const e12 = ema(closes, 12);
+      const e26 = ema(closes, 26);
+      const macdLine = closes.map((_, i) => e12[i] - e26[i]);
+      const sig = ema(macdLine.slice(-9), 9);
+      const last = macdLine[macdLine.length - 1];
+      return {
+        line:   last,
+        signal: sig[sig.length - 1],
+        hist:   last - sig[sig.length - 1]
+      };
+    }
+
+    /* Detecta suporte / resistência recente */
+    function calcSR(highs, lows, n = 20) {
+      return {
+        resistance: Math.max(...highs.slice(-n)),
+        support:    Math.min(...lows.slice(-n))
+      };
+    }
+
+    /* ────────────────────────────────────────────
+       ANÁLISE E OCO
+    ──────────────────────────────────────────── */
+    function updateAnalysis() {
+      if (priceHistory.length < 30) return;
+
+      const closes = priceHistory.map(p => p.close);
+      const highs  = priceHistory.map(p => p.high);
+      const lows   = priceHistory.map(p => p.low);
+      const last   = closes[closes.length - 1];
+      const prev   = closes[closes.length - 2];
+
+      const rsi  = calcRSI(closes);
+      const e9   = ema(closes, 9);
+      const e21  = ema(closes, 21);
+      const last9  = e9[e9.length - 1];
+      const last21 = e21[e21.length - 1];
+      const macd   = calcMACD(closes);
+      const bb     = calcBB(closes);
+      const sr     = calcSR(highs, lows);
+
+      /* Sinais individuais */
+      const rsiSig   = rsi > 70 ? 'sell' : rsi < 30 ? 'buy' : 'neutral';
+      const emaSig   = last9 < last21 ? 'sell' : last9 > last21 ? 'buy' : 'neutral';
+      const macdSig  = macd.hist < 0 && macd.line < 0 ? 'sell'
+                     : macd.hist > 0 && macd.line > 0  ? 'buy' : 'neutral';
+      const bbSig    = last > bb.upper ? 'sell' : last < bb.lower ? 'buy' : 'neutral';
+      const trendSig = last < prev && last < last21 ? 'sell'
+                     : last > prev && last > last21 ? 'buy' : 'neutral';
+
+      const sigs      = [rsiSig, emaSig, macdSig, bbSig, trendSig];
+      const sellCount = sigs.filter(s => s === 'sell').length;
+      const buyCount  = sigs.filter(s => s === 'buy').length;
+
+      /* RSI card */
+      document.getElementById('mRsi').textContent = rsi.toFixed(1);
+      const rsiPct = Math.min(Math.max(rsi, 0), 100);
+      const rsiBar = document.getElementById('rsiBar');
+      rsiBar.style.width      = rsiPct + '%';
+      rsiBar.style.background = rsi > 70 ? 'var(--red)'
+                              : rsi < 30 ? 'var(--green)' : 'var(--accent)';
+
+      /* Tabela de análise técnica */
+      const rows = [
+        { name: 'RSI (14)',      val: rsi.toFixed(1),                                     sig: rsiSig   },
+        { name: 'EMA 9 / 21',   val: '$' + fmt(last9) + ' / $' + fmt(last21),            sig: emaSig   },
+        { name: 'MACD',         val: macd.hist.toFixed(3),                                sig: macdSig  },
+        { name: 'Bollinger',    val: '$' + fmt(bb.upper) + ' / $' + fmt(bb.lower),        sig: bbSig    },
+        { name: 'Tendência',    val: trendSig==='sell'?'Baixista':trendSig==='buy'?'Altista':'Lateral', sig: trendSig }
+      ];
+
+      const summaryClass = sellCount >= 3 ? 'sig-sell'
+                         : buyCount  >= 3 ? 'sig-buy' : 'sig-neutral';
+      const summaryText  = sellCount >= 3 ? `Sinal de VENDA (${sellCount}/5)`
+                         : buyCount  >= 3 ? `Sinal de COMPRA (${buyCount}/5)` : `Mercado neutro`;
+
+      document.getElementById('taTable').innerHTML = `
+        <div class="signal-summary">
+          <span class="sig-pill ${summaryClass}">${summaryText}</span>
+        </div>
+        ${rows.map(r => `
+          <div class="ta-row">
+            <span class="ta-name">${r.name}</span>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="font-size:12px;color:var(--muted)">${r.val}</span>
+              <span class="badge badge-${r.sig === 'sell' ? 'sell' : r.sig === 'buy' ? 'buy' : 'neutral'}">
+                ${r.sig === 'sell' ? 'Venda' : r.sig === 'buy' ? 'Compra' : 'Neutro'}
+              </span>
+            </div>
+          </div>`).join('')}`;
+
+      /* OCO */
+      if (sellCount >= 3) {
+        const entry  = last;
+        const sl     = +(entry * (1 + 0.025)).toFixed(2);
+        const tp     = +(entry * (1 - 0.045)).toFixed(2);
+        const risk   = ((sl - entry) / entry * 100).toFixed(2);
+        const reward = ((entry - tp) / entry * 100).toFixed(2);
+        const rr     = (reward / risk).toFixed(2);
+
+        document.getElementById('ocoPanel').innerHTML = `
+          <div class="oco-box">
+            <div class="oco-header">
+              <span class="oco-title">Operação de Venda</span>
+              <span class="oco-tag">OCO SHORT</span>
+            </div>
+            <div class="oco-grid">
+              <div class="oco-item">
+                <div class="oco-item-label">Entrada</div>
+                <div class="oco-item-val entry">$${fmt(entry)}</div>
+              </div>
+              <div class="oco-item">
+                <div class="oco-item-label">Stop Loss</div>
+                <div class="oco-item-val sl">$${fmt(sl)}</div>
+              </div>
+              <div class="oco-item">
+                <div class="oco-item-label">Take Profit</div>
+                <div class="oco-item-val tp">$${fmt(tp)}</div>
+              </div>
+              <div class="oco-item">
+                <div class="oco-item-label">Relação R/R</div>
+                <div class="oco-item-val rr">1 : ${rr}</div>
+              </div>
+            </div>
+            <div class="oco-footer">
+              <span>Risco: ${risk}%</span>
+              <span>Retorno esperado: ${reward}%</span>
+              <span style="color:var(--muted);margin-left:auto">${sellCount}/5 sinais vendedores</span>
+            </div>
+          </div>`;
+      } else if (buyCount >= 3) {
+        document.getElementById('ocoPanel').innerHTML =
+          `<div class="no-signal">Sem sinal de venda no momento.<br>
+           <span style="font-size:12px">Sinais de compra detectados (${buyCount}/5)</span></div>`;
+      } else {
+        document.getElementById('ocoPanel').innerHTML =
+          `<div class="no-signal">Mercado neutro.<br>
+           <span style="font-size:12px">Aguardando confluência de sinais...</span></div>`;
+      }
+    }
+
+    /* ────────────────────────────────────────────
+       GRÁFICO (Chart.js)
+    ──────────────────────────────────────────── */
+    function renderChart() {
+      if (!priceHistory.length) return;
+
+      const closes = priceHistory.map(p => p.close);
+      const vols   = priceHistory.map(p => p.vol);
+      const labels = priceHistory.map(p => {
+        const d = new Date(p.t);
+        if (activeTF === '1d')
+          return d.toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit' });
+        return d.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
+      });
+
+      /* Indicadores para o gráfico */
+      const ema9arr  = ema(closes, 9);
+      const ema21arr = ema(closes, 21);
+      const bb       = calcBB(closes);
+      const bbStart  = closes.length - 20;
+      const bbUpper  = closes.map((_, i) => i >= bbStart ? bb.upper : null);
+      const bbMid    = closes.map((_, i) => i >= bbStart ? bb.mid   : null);
+      const bbLower  = closes.map((_, i) => i >= bbStart ? bb.lower : null);
+
+      const datasets = [
+        {
+          label: 'Preço', type: 'line', data: closes,
+          borderColor: '#3b7eff', borderWidth: 1.8,
+          pointRadius: 0, tension: 0.1, yAxisID: 'y', fill: false, order: 1
+        }
+      ];
+
+      if (showEMA) {
+        datasets.push({
+          label: 'EMA 9', type: 'line', data: ema9arr,
+          borderColor: '#e8a232', borderWidth: 1.2, pointRadius: 0,
+          tension: 0.1, yAxisID: 'y', fill: false, order: 2, borderDash: [3,3]
+        });
+        datasets.push({
+          label: 'EMA 21', type: 'line', data: ema21arr,
+          borderColor: '#1db87a', borderWidth: 1.2, pointRadius: 0,
+          tension: 0.1, yAxisID: 'y', fill: false, order: 3, borderDash: [5,3]
+        });
+      }
+
+      if (showBB) {
+        datasets.push({
+          label: 'BB Sup', type: 'line', data: bbUpper,
+          borderColor: 'rgba(160,130,255,0.5)', borderWidth: 1,
+          pointRadius: 0, yAxisID: 'y', fill: '+1',
+          backgroundColor: 'rgba(90,100,200,0.05)', order: 4, spanGaps: false
+        });
+        datasets.push({
+          label: 'BB Mid', type: 'line', data: bbMid,
+          borderColor: 'rgba(160,130,255,0.25)', borderWidth: 1,
+          pointRadius: 0, yAxisID: 'y', fill: false, order: 5,
+          borderDash: [2,4], spanGaps: false
+        });
+        datasets.push({
+          label: 'BB Inf', type: 'line', data: bbLower,
+          borderColor: 'rgba(160,130,255,0.5)', borderWidth: 1,
+          pointRadius: 0, yAxisID: 'y', fill: false, order: 6, spanGaps: false
+        });
+      }
+
+      if (showVol) {
+        datasets.push({
+          label: 'Volume', type: 'bar', data: vols,
+          backgroundColor: 'rgba(59,126,255,0.18)',
+          borderColor: 'rgba(59,126,255,0.35)',
+          borderWidth: 0.5, yAxisID: 'y2', order: 10
+        });
+      }
+
+      /* Atualiza ou cria o gráfico */
+      if (chart) {
+        chart.data.labels   = labels;
+        chart.data.datasets = datasets;
+        chart.options.scales.y2.display = showVol;
+        chart.update('none');
+        return;
+      }
+
+      const ctx = document.getElementById('priceChart').getContext('2d');
+      chart = new Chart(ctx, {
+        data: { labels, datasets },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          animation: { duration: 0 },
+          interaction: { mode: 'index', intersect: false },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: 'rgba(10,12,20,0.92)',
+              titleColor:  '#7a8099',
+              bodyColor:   '#e8eaf0',
+              titleFont:   { size: 11 },
+              bodyFont:    { size: 12 },
+              callbacks: {
+                label: ctx => {
+                  if (ctx.dataset.label === 'Volume')
+                    return '  Vol: ' + fmtK(ctx.parsed.y);
+                  if (['BB Sup','BB Mid','BB Inf'].includes(ctx.dataset.label))
+                    return `  ${ctx.dataset.label}: $${fmt(ctx.parsed.y)}`;
+                  return `  ${ctx.dataset.label}: $${fmt(ctx.parsed.y)}`;
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid:   { color: 'rgba(255,255,255,0.04)' },
+              ticks:  { font: { size: 10 }, maxTicksLimit: 8, color: '#4a5068' },
+              border: { display: false }
+            },
+            y: {
+              position: 'right',
+              grid:     { color: 'rgba(255,255,255,0.04)' },
+              ticks: {
+                font:     { size: 10 },
+                color:    '#4a5068',
+                callback: v => '$' + fmt(v)
+              },
+              border: { display: false }
+            },
+            y2: {
+              display:  showVol,
+              position: 'left',
+              grid:     { display: false },
+              ticks: {
+                font:     { size: 9 },
+                color:    'rgba(59,126,255,0.45)',
+                callback: v => fmtK(v)
+              },
+              border: { display: false }
+            }
+          }
+        }
+      });
+    }
+
+    /* ────────────────────────────────────────────
+       CONTROLES
+    ──────────────────────────────────────────── */
+    function setTF(tf, btn) {
+      activeTF = tf;
+      document.querySelectorAll('.tf-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('chartLoading').style.display = 'flex';
+      priceHistory = [];
+      if (chart) { chart.destroy(); chart = null; }
+      if (ws) ws.close();
+      loadHistory().then(() => connectWS());
+    }
+
+    function toggleInd(ind, btn) {
+      if (ind === 'EMA') showEMA = !showEMA;
+      if (ind === 'BB')  showBB  = !showBB;
+      if (ind === 'VOL') {
+        showVol = !showVol;
+        if (chart) { chart.destroy(); chart = null; }
+      }
+      btn.classList.toggle('on');
+      renderChart();
+    }
+
+    function showAddCoin() {
+      const sym = prompt('Símbolo do par (ex: BNBUSDT, DOGEUSDT, LINKUSDT):');
+      if (!sym) return;
+      const s = sym.toUpperCase().trim();
+      if (!s.endsWith('USDT')) return alert('Use pares USDT — ex: BNBUSDT');
+      if (COINS.includes(s))   return alert('Moeda já adicionada');
+      COINS.push(s);
+      LABELS[s] = s.replace('USDT', '');
+      buildTabs();
+      switchCoin(s);
+    }
+
+    /* ────────────────────────────────────────────
+       INICIALIZAÇÃO
+    ──────────────────────────────────────────── */
+    buildTabs();
+    loadHistory().then(() => connectWS());
+    setInterval(() => updateAnalysis(), 4000);
+  </script>
+</body>
+</html>
