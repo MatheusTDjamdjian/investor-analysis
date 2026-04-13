@@ -1,14 +1,10 @@
 // pages/index.jsx
-// Dashboard principal.
-// Integra: useCrypto (WebSocket), calcAllIndicators + generateSignal,
-// OcoSuggestion, TradeModal, PriceChart, TechnicalAnalysis.
-
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { useCrypto }       from '@/hooks/useCrypto';
+import { useCrypto } from '@/hooks/useCrypto';
 import { calcAllIndicators, generateSignal } from '@/lib/indicators';
-import OcoSuggestion       from '@/components/OcoSuggestion';
-import TradeModal          from '@/components/TradeModal';
+import OcoSuggestion from '@/components/OcoSuggestion';
+import TradeModal from '@/components/TradeModal';
 
 const COINS  = ['BTCUSDT','ETHUSDT','SOLUSDT','AVAXUSDT','XRPUSDT'];
 const LABELS = { BTCUSDT:'BTC', ETHUSDT:'ETH', SOLUSDT:'SOL', AVAXUSDT:'AVAX', XRPUSDT:'XRP' };
@@ -29,7 +25,6 @@ export default function Dashboard() {
 
   const { candles, ticker, status } = useCrypto(coin, tf);
 
-  // Calcula indicadores e sinal
   const { indicators, signal } = useMemo(() => {
     if (candles.length < 50) return { indicators: null, signal: null };
     const ind = calcAllIndicators(candles);
@@ -39,6 +34,50 @@ export default function Dashboard() {
 
   const label = LABELS[coin] || coin.replace('USDT', '');
 
+  const taRows = indicators ? [
+    {
+      name: 'RSI (14)',
+      val:  indicators.rsi?.toFixed(1),
+      sig:  indicators.rsi > 70 ? 'sell' : indicators.rsi < 30 ? 'buy' : 'neutral',
+    },
+    {
+      name: 'MACD',
+      val:  indicators.macd?.histogram?.toFixed(4),
+      sig:  indicators.macd?.histogram < 0 ? 'sell'
+          : indicators.macd?.histogram > 0 ? 'buy' : 'neutral',
+    },
+    {
+      name: 'EMA 9 / 21',
+      val:  `$${fmt(indicators.ema?.e9)} / $${fmt(indicators.ema?.e21)}`,
+      sig:  indicators.ema?.e9 < indicators.ema?.e21 ? 'sell' : 'buy',
+    },
+    {
+      name: 'Bollinger %B',
+      val:  (indicators.bb?.percentB * 100)?.toFixed(0) + '%',
+      sig:  indicators.bb?.percentB > 0.85 ? 'sell'
+          : indicators.bb?.percentB < 0.15 ? 'buy' : 'neutral',
+    },
+    {
+      name: 'Estocástico K',
+      val:  indicators.stoch?.k?.toFixed(1),
+      sig:  indicators.stoch?.k > 80 ? 'sell'
+          : indicators.stoch?.k < 20 ? 'buy' : 'neutral',
+    },
+    {
+      name: 'S / R',
+      val:  indicators.sr
+        ? `$${fmt(indicators.sr.resistance)} / $${fmt(indicators.sr.support)}`
+        : '—',
+      sig: (() => {
+        if (!indicators.sr) return 'neutral';
+        const p    = indicators.price;
+        const dRes = (indicators.sr.resistance - p) / p;
+        const dSup = (p - indicators.sr.support)    / p;
+        return dRes < 0.005 ? 'sell' : dSup < 0.005 ? 'buy' : 'neutral';
+      })(),
+    },
+  ] : [];
+
   return (
     <div style={{
       minHeight: '100vh',
@@ -47,11 +86,11 @@ export default function Dashboard() {
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif',
       padding: '20px',
     }}>
+
       {/* ── Top bar ── */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 20 }}>
         <span style={{ fontSize: 15, fontWeight: 700, color: '#5a8fff', marginRight: 6 }}>◈ CryptoDesk</span>
 
-        {/* Abas de moedas */}
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', flex: 1 }}>
           {COINS.map(c => (
             <button
@@ -70,23 +109,19 @@ export default function Dashboard() {
           ))}
         </div>
 
-        {/* Status ao vivo */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 12, color: '#7a8099' }}>
           <div style={{
             width: 7, height: 7, borderRadius: '50%',
             background: status === 'live' ? '#1db87a' : '#e8a232',
-            animation: status === 'live' ? 'none' : undefined,
           }} />
           {status === 'live' ? 'Ao vivo' : 'Conectando...'}
         </div>
 
-        {/* Link para histórico */}
         <Link href="/history" style={{
           padding: '6px 14px', borderRadius: 8, fontSize: 13,
           background: 'transparent',
           border: '1px solid rgba(255,255,255,0.1)',
           color: '#7a8099', textDecoration: 'none',
-          transition: 'all 0.12s',
         }}>
           Histórico →
         </Link>
@@ -100,25 +135,25 @@ export default function Dashboard() {
         {[
           {
             label: 'Preço atual',
-            val:   ticker ? '$' + fmt(ticker.price) : '—',
-            sub:   ticker ? `${ticker.change >= 0 ? '+' : ''}${ticker.change?.toFixed(2)}%` : '—',
+            val:      ticker ? '$' + fmt(ticker.price) : '—',
+            sub:      ticker ? `${ticker.change >= 0 ? '+' : ''}${ticker.change?.toFixed(2)}%` : '—',
             subColor: ticker?.change >= 0 ? '#1db87a' : '#e05252',
           },
           {
             label: 'Volume 24h',
-            val:   ticker ? fmtK(ticker.volume) : '—',
-            sub:   'USDT',
+            val:  ticker ? fmtK(ticker.volume) : '—',
+            sub:  'USDT',
           },
           {
-            label: 'Máx / Mín',
-            val:   ticker ? '$' + fmt(ticker.high24h) : '—',
-            sub:   ticker ? '$' + fmt(ticker.low24h)  : '—',
+            label:    'Máx / Mín',
+            val:      ticker ? '$' + fmt(ticker.high24h) : '—',
+            sub:      ticker ? '$' + fmt(ticker.low24h)  : '—',
             subColor: '#e05252',
           },
           {
-            label: 'RSI (14)',
-            val:   indicators?.rsi != null ? indicators.rsi.toFixed(1) : '—',
-            sub:   indicators?.rsi > 70 ? 'Sobrecomprado' : indicators?.rsi < 30 ? 'Sobrevendido' : 'Neutro',
+            label:    'RSI (14)',
+            val:      indicators?.rsi != null ? indicators.rsi.toFixed(1) : '—',
+            sub:      indicators?.rsi > 70 ? 'Sobrecomprado' : indicators?.rsi < 30 ? 'Sobrevendido' : 'Neutro',
             subColor: indicators?.rsi > 70 ? '#e05252' : indicators?.rsi < 30 ? '#1db87a' : '#7a8099',
           },
         ].map(({ label, val, sub, subColor }) => (
@@ -169,37 +204,28 @@ export default function Dashboard() {
             Análise técnica
           </div>
 
+          {/* Badge de sinal geral */}
           {signal && (
             <div style={{ marginBottom: 12 }}>
               <span style={{
                 padding: '4px 12px', borderRadius: 6, fontSize: 12, fontWeight: 700,
-                background: signal.signal === 'SELL' ? 'rgba(224,82,82,0.15)' :
-                            signal.signal === 'BUY'  ? 'rgba(29,184,122,0.15)' : '#1a1e2a',
-                color:      signal.signal === 'SELL' ? '#e05252' :
-                            signal.signal === 'BUY'  ? '#1db87a' : '#7a8099',
-                border: `1px solid ${signal.signal === 'SELL' ? 'rgba(224,82,82,0.3)' :
-                                     signal.signal === 'BUY'  ? 'rgba(29,184,122,0.3)' : 'rgba(255,255,255,0.1)'}`,
+                background: signal.signal === 'SELL' ? 'rgba(224,82,82,0.15)'
+                          : signal.signal === 'BUY'  ? 'rgba(29,184,122,0.15)' : '#1a1e2a',
+                color:      signal.signal === 'SELL' ? '#e05252'
+                          : signal.signal === 'BUY'  ? '#1db87a' : '#7a8099',
+                border: `1px solid ${
+                  signal.signal === 'SELL' ? 'rgba(224,82,82,0.3)'
+                : signal.signal === 'BUY'  ? 'rgba(29,184,122,0.3)' : 'rgba(255,255,255,0.1)'}`,
               }}>
-                {signal.signal === 'SELL' ? `Sinal de VENDA (${signal.sellCount}/6)` :
-                 signal.signal === 'BUY'  ? `Sinal de COMPRA (${signal.buyCount}/6)` : 'Mercado neutro'}
+                {signal.signal === 'SELL' ? `Sinal de VENDA (${signal.sellCount}/6)`
+               : signal.signal === 'BUY'  ? `Sinal de COMPRA (${signal.buyCount}/6)`
+               : `Neutro — ${signal.sellCount} venda · ${signal.buyCount} compra`}
               </span>
             </div>
           )}
 
-          {indicators && [
-            { name: 'RSI (14)',       val: indicators.rsi?.toFixed(1),
-              sig: indicators.rsi > 70 ? 'sell' : indicators.rsi < 30 ? 'buy' : 'neutral' },
-            { name: 'MACD',          val: indicators.macd?.histogram?.toFixed(4),
-              sig: indicators.macd?.histogram < 0 ? 'sell' : indicators.macd?.histogram > 0 ? 'buy' : 'neutral' },
-            { name: 'EMA 9 / 21',    val: `$${fmt(indicators.ema?.e9)} / $${fmt(indicators.ema?.e21)}`,
-              sig: indicators.ema?.e9 < indicators.ema?.e21 ? 'sell' : 'buy' },
-            { name: 'Bollinger %B',  val: (indicators.bb?.percentB * 100)?.toFixed(0) + '%',
-              sig: indicators.bb?.percentB > 0.85 ? 'sell' : indicators.bb?.percentB < 0.15 ? 'buy' : 'neutral' },
-            { name: 'Estocástico K', val: indicators.stoch?.k?.toFixed(1),
-              sig: indicators.stoch?.k > 80 ? 'sell' : indicators.stoch?.k < 20 ? 'buy' : 'neutral' },
-            { name: 'Volume',        val: `${indicators.volume?.ratio?.toFixed(1)}x média`,
-              sig: indicators.volume?.isHigh ? 'buy' : 'neutral' },
-          ].map(({ name, val, sig }) => (
+          {/* Tabela de indicadores — 6 votantes */}
+          {taRows.map(({ name, val, sig }) => (
             <div key={name} style={{
               display: 'flex', justifyContent: 'space-between', alignItems: 'center',
               padding: '7px 0',
@@ -210,17 +236,45 @@ export default function Dashboard() {
                 <span style={{ fontSize: 12, color: '#7a8099' }}>{val}</span>
                 <span style={{
                   padding: '2px 8px', borderRadius: 4, fontSize: 11, fontWeight: 600,
-                  background: sig === 'sell' ? 'rgba(224,82,82,0.15)' :
-                              sig === 'buy'  ? 'rgba(29,184,122,0.15)' : '#1a1e2a',
-                  color:      sig === 'sell' ? '#e05252' :
-                              sig === 'buy'  ? '#1db87a' : '#7a8099',
+                  background: sig === 'sell' ? 'rgba(224,82,82,0.15)'
+                            : sig === 'buy'  ? 'rgba(29,184,122,0.15)' : '#1a1e2a',
+                  color:      sig === 'sell' ? '#e05252'
+                            : sig === 'buy'  ? '#1db87a' : '#7a8099',
                 }}>
                   {sig === 'sell' ? 'Venda' : sig === 'buy' ? 'Compra' : 'Neutro'}
                 </span>
               </div>
             </div>
           ))}
+
+          {/* Volume — informação apenas, não vota no sinal */}
+          {indicators?.volume && (
+            <div style={{
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              padding: '7px 0', fontSize: 13,
+              borderTop: '1px solid rgba(255,255,255,0.05)',
+              marginTop: 2,
+            }}>
+              <span style={{ color: '#7a8099' }}>
+                Volume <span style={{ fontSize: 10, opacity: 0.5 }}>(info)</span>
+              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 12, color: '#7a8099' }}>
+                  {indicators.volume.ratio.toFixed(1)}x média
+                </span>
+                <span style={{
+                  padding: '2px 8px', borderRadius: 4, fontSize: 11, fontWeight: 500,
+                  background: '#1a1e2a',
+                  color: indicators.volume.isHigh ? '#e8a232' : '#7a8099',
+                  border: '1px solid rgba(255,255,255,0.06)',
+                }}>
+                  {indicators.volume.isHigh ? 'Alto' : 'Normal'}
+                </span>
+              </div>
+            </div>
+          )}
         </div>
+        {/* fim painel análise técnica */}
 
         {/* Sugestão OCO */}
         <OcoSuggestion
@@ -229,10 +283,13 @@ export default function Dashboard() {
           price={ticker?.price ?? indicators?.price}
           indicators={indicators}
         />
+
       </div>
+      {/* fim bottom grid */}
 
       {/* Modal global */}
       <TradeModal />
+
     </div>
   );
 }

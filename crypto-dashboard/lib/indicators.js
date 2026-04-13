@@ -203,132 +203,170 @@ export function calcAllIndicators(candles) {
 /**
  * generateSignal — analisa os indicadores e retorna o sinal de trading.
  *
- * LÓGICA DE CONFLUÊNCIA:
- * Cada indicador contribui com pontos (-1 a +1):
- *   SELL  contribui com pontos negativos
- *   BUY   contribui com pontos positivos
- *   HOLD  contribui 0
+ * LÓGICA DE CONFLUÊNCIA (atualizada):
+ * 6 indicadores técnicos votam independentemente:
+ *   1. RSI
+ *   2. MACD
+ *   3. Bandas de Bollinger
+ *   4. Cruzamento de EMAs
+ *   5. Estocástico
+ *   6. Suporte / Resistência
  *
- * Sinal gerado apenas quando:
- *   - Pontuação total ≤ -4 (SELL forte) ou ≥ +4 (BUY forte)
- *   - Volume alto confirma o movimento (obrigatório)
- *   - Pelo menos 5 dos 7 indicadores apontam na mesma direção
+ * Volume é exibido como informação adicional mas NÃO bloqueia nem gera sinal.
  *
- * @returns {{ signal: 'SELL'|'BUY'|'HOLD', strength: number, reasons: string[], score: number }}
+ * Sinal gerado quando:
+ *   - 4 ou mais indicadores apontam na mesma direção (SELL ou BUY)
+ *   - Score ponderado ≥ 3.0 na direção do sinal
+ *
+ * @returns {{ signal: 'SELL'|'BUY'|'HOLD', strength, reasons, score, sellCount, buyCount }}
  */
 export function generateSignal(ind) {
   const { price, rsi, macd, bb, volume, stoch, sr, ema } = ind;
-  if (!rsi || !macd || !bb || !volume || !stoch) {
-    return { signal: 'HOLD', strength: 0, reasons: ['Dados insuficientes'], score: 0 };
+
+  // Dados mínimos obrigatórios (não inclui volume)
+  if (!rsi || !macd || !bb || !stoch) {
+    return {
+      signal:    'HOLD',
+      strength:  0,
+      reasons:   ['Dados insuficientes para análise'],
+      score:     0,
+      sellCount: 0,
+      buyCount:  0,
+    };
   }
 
   const checks = [];
 
-  // 1. RSI
-  if (rsi > 72)      checks.push({ dir: 'SELL', weight: 1.5, reason: `RSI sobrecomprado (${rsi.toFixed(1)})` });
-  else if (rsi > 65) checks.push({ dir: 'SELL', weight: 0.8, reason: `RSI elevado (${rsi.toFixed(1)})` });
-  else if (rsi < 28) checks.push({ dir: 'BUY',  weight: 1.5, reason: `RSI sobrevendido (${rsi.toFixed(1)})` });
-  else if (rsi < 35) checks.push({ dir: 'BUY',  weight: 0.8, reason: `RSI baixo (${rsi.toFixed(1)})` });
-  else               checks.push({ dir: 'HOLD',  weight: 0,   reason: 'RSI neutro' });
+  // ── 1. RSI ──────────────────────────────────────────────────────────────────
+  if (rsi > 72)
+    checks.push({ dir: 'SELL', weight: 1.5, reason: `RSI sobrecomprado (${rsi.toFixed(1)})` });
+  else if (rsi > 65)
+    checks.push({ dir: 'SELL', weight: 0.8, reason: `RSI elevado (${rsi.toFixed(1)})` });
+  else if (rsi < 28)
+    checks.push({ dir: 'BUY',  weight: 1.5, reason: `RSI sobrevendido (${rsi.toFixed(1)})` });
+  else if (rsi < 35)
+    checks.push({ dir: 'BUY',  weight: 0.8, reason: `RSI baixo (${rsi.toFixed(1)})` });
+  else
+    checks.push({ dir: 'HOLD', weight: 0,   reason: `RSI neutro (${rsi.toFixed(1)})` });
 
-  // 2. MACD
-  if (macd.bearishCross)          checks.push({ dir: 'SELL', weight: 1.5, reason: 'MACD cruzamento baixista' });
+  // ── 2. MACD ─────────────────────────────────────────────────────────────────
+  if (macd.bearishCross)
+    checks.push({ dir: 'SELL', weight: 1.5, reason: 'MACD cruzamento baixista' });
   else if (macd.histogram < -0.001 && macd.line < 0)
-                                   checks.push({ dir: 'SELL', weight: 1.0, reason: `MACD negativo (hist: ${macd.histogram.toFixed(4)})` });
-  else if (macd.bullishCross)      checks.push({ dir: 'BUY',  weight: 1.5, reason: 'MACD cruzamento altista' });
+    checks.push({ dir: 'SELL', weight: 1.0, reason: `MACD negativo (hist: ${macd.histogram.toFixed(4)})` });
+  else if (macd.bullishCross)
+    checks.push({ dir: 'BUY',  weight: 1.5, reason: 'MACD cruzamento altista' });
   else if (macd.histogram > 0.001 && macd.line > 0)
-                                   checks.push({ dir: 'BUY',  weight: 1.0, reason: `MACD positivo (hist: ${macd.histogram.toFixed(4)})` });
-  else                             checks.push({ dir: 'HOLD',  weight: 0,   reason: 'MACD neutro' });
+    checks.push({ dir: 'BUY',  weight: 1.0, reason: `MACD positivo (hist: ${macd.histogram.toFixed(4)})` });
+  else
+    checks.push({ dir: 'HOLD', weight: 0,   reason: 'MACD neutro' });
 
-  // 3. Bandas de Bollinger
-  if (bb.percentB > 0.95)         checks.push({ dir: 'SELL', weight: 1.2, reason: `Preço acima da banda superior (${(bb.percentB * 100).toFixed(0)}%)` });
-  else if (bb.percentB > 0.85)    checks.push({ dir: 'SELL', weight: 0.7, reason: 'Preço próximo da banda superior' });
-  else if (bb.percentB < 0.05)    checks.push({ dir: 'BUY',  weight: 1.2, reason: 'Preço abaixo da banda inferior' });
-  else if (bb.percentB < 0.15)    checks.push({ dir: 'BUY',  weight: 0.7, reason: 'Preço próximo da banda inferior' });
-  else                             checks.push({ dir: 'HOLD',  weight: 0,   reason: 'Preço dentro das bandas' });
+  // ── 3. Bandas de Bollinger ──────────────────────────────────────────────────
+  if (bb.percentB > 0.95)
+    checks.push({ dir: 'SELL', weight: 1.2, reason: `Preço acima da banda superior (${(bb.percentB * 100).toFixed(0)}%)` });
+  else if (bb.percentB > 0.85)
+    checks.push({ dir: 'SELL', weight: 0.7, reason: 'Preço próximo da banda superior' });
+  else if (bb.percentB < 0.05)
+    checks.push({ dir: 'BUY',  weight: 1.2, reason: 'Preço abaixo da banda inferior' });
+  else if (bb.percentB < 0.15)
+    checks.push({ dir: 'BUY',  weight: 0.7, reason: 'Preço próximo da banda inferior' });
+  else
+    checks.push({ dir: 'HOLD', weight: 0,   reason: 'Preço dentro das bandas de Bollinger' });
 
-  // 4. Cruzamento de EMAs
-  if (ema.e9 < ema.e21 && ema.e21 < (ema.e50 || ema.e21))
-                                   checks.push({ dir: 'SELL', weight: 1.0, reason: 'EMA 9 < EMA 21 < EMA 50 (tendência baixista)' });
-  else if (ema.e9 > ema.e21 && ema.e21 > (ema.e50 || ema.e21))
-                                   checks.push({ dir: 'BUY',  weight: 1.0, reason: 'EMA 9 > EMA 21 > EMA 50 (tendência altista)' });
-  else if (ema.e9 < ema.e21)       checks.push({ dir: 'SELL', weight: 0.6, reason: 'EMA 9 cruzou abaixo da EMA 21' });
-  else if (ema.e9 > ema.e21)       checks.push({ dir: 'BUY',  weight: 0.6, reason: 'EMA 9 cruzou acima da EMA 21' });
-  else                             checks.push({ dir: 'HOLD',  weight: 0,   reason: 'EMAs sem direção clara' });
+  // ── 4. Cruzamento de EMAs ───────────────────────────────────────────────────
+  const e50ref = ema.e50 || ema.e21; // fallback se e50 não calculado ainda
+  if (ema.e9 < ema.e21 && ema.e21 < e50ref)
+    checks.push({ dir: 'SELL', weight: 1.0, reason: 'EMA 9 < EMA 21 < EMA 50 — tendência baixista' });
+  else if (ema.e9 > ema.e21 && ema.e21 > e50ref)
+    checks.push({ dir: 'BUY',  weight: 1.0, reason: 'EMA 9 > EMA 21 > EMA 50 — tendência altista' });
+  else if (ema.e9 < ema.e21)
+    checks.push({ dir: 'SELL', weight: 0.6, reason: 'EMA 9 cruzou abaixo da EMA 21' });
+  else if (ema.e9 > ema.e21)
+    checks.push({ dir: 'BUY',  weight: 0.6, reason: 'EMA 9 cruzou acima da EMA 21' });
+  else
+    checks.push({ dir: 'HOLD', weight: 0,   reason: 'EMAs sem direção clara' });
 
-  // 5. Estocástico
+  // ── 5. Estocástico ──────────────────────────────────────────────────────────
   if (stoch.k > 80 && stoch.k < stoch.d)
-                                   checks.push({ dir: 'SELL', weight: 1.0, reason: `Estocástico sobrecomprado e caindo (K: ${stoch.k.toFixed(1)})` });
-  else if (stoch.k > 75)           checks.push({ dir: 'SELL', weight: 0.6, reason: `Estocástico alto (${stoch.k.toFixed(1)})` });
+    checks.push({ dir: 'SELL', weight: 1.0, reason: `Estocástico sobrecomprado e caindo (K: ${stoch.k.toFixed(1)})` });
+  else if (stoch.k > 75)
+    checks.push({ dir: 'SELL', weight: 0.6, reason: `Estocástico alto (${stoch.k.toFixed(1)})` });
   else if (stoch.k < 20 && stoch.k > stoch.d)
-                                   checks.push({ dir: 'BUY',  weight: 1.0, reason: `Estocástico sobrevendido e subindo (K: ${stoch.k.toFixed(1)})` });
-  else if (stoch.k < 25)           checks.push({ dir: 'BUY',  weight: 0.6, reason: `Estocástico baixo (${stoch.k.toFixed(1)})` });
-  else                             checks.push({ dir: 'HOLD',  weight: 0,   reason: 'Estocástico neutro' });
+    checks.push({ dir: 'BUY',  weight: 1.0, reason: `Estocástico sobrevendido e subindo (K: ${stoch.k.toFixed(1)})` });
+  else if (stoch.k < 25)
+    checks.push({ dir: 'BUY',  weight: 0.6, reason: `Estocástico baixo (${stoch.k.toFixed(1)})` });
+  else
+    checks.push({ dir: 'HOLD', weight: 0,   reason: `Estocástico neutro (${stoch.k.toFixed(1)})` });
 
-  // 6. Volume (confirmação — sem volume alto, sinal perde peso)
-  const volMultiplier = volume.isHigh ? 1.0 : 0.5;
-  checks.push({
-    dir: 'HOLD',
-    weight: 0,
-    reason: volume.isHigh
-      ? `Volume alto confirmando (${volume.ratio.toFixed(1)}x média)`
-      : `Volume baixo — sinal fraco (${volume.ratio.toFixed(1)}x média)`,
-  });
+  // ── 6. Suporte / Resistência ────────────────────────────────────────────────
+  if (sr) {
+    const distToResistance = (sr.resistance - price) / price;
+    const distToSupport    = (price - sr.support)    / price;
 
-  // 7. Proximidade de Suporte / Resistência
-  const distToResistance = (sr.resistance - price) / price;
-  const distToSupport    = (price - sr.support) / price;
-  if (distToResistance < 0.005)    checks.push({ dir: 'SELL', weight: 0.8, reason: 'Preço em nível de resistência' });
-  else if (distToSupport < 0.005)  checks.push({ dir: 'BUY',  weight: 0.8, reason: 'Preço em nível de suporte' });
-  else                             checks.push({ dir: 'HOLD',  weight: 0,   reason: 'Sem confluência com S/R' });
+    if (distToResistance < 0.005)
+      checks.push({ dir: 'SELL', weight: 0.8, reason: 'Preço em nível de resistência recente' });
+    else if (distToSupport < 0.005)
+      checks.push({ dir: 'BUY',  weight: 0.8, reason: 'Preço em nível de suporte recente' });
+    else
+      checks.push({ dir: 'HOLD', weight: 0,   reason: 'Sem confluência com suporte/resistência' });
+  }
 
-  // ── Pontuação final ──
+  // ── Pontuação final ──────────────────────────────────────────────────────────
   let score = 0;
   const sellReasons = [];
   const buyReasons  = [];
 
   checks.forEach(c => {
-    if (c.dir === 'SELL') { score -= c.weight * volMultiplier; sellReasons.push(c.reason); }
-    if (c.dir === 'BUY')  { score += c.weight * volMultiplier; buyReasons.push(c.reason);  }
-    if (c.reason && c.dir === 'HOLD') {
-      // inclui na lista de razões como informação
-      if (c.reason.includes('Volume')) (score < 0 ? sellReasons : buyReasons).push(c.reason);
-    }
+    if (c.dir === 'SELL') { score -= c.weight; sellReasons.push(c.reason); }
+    if (c.dir === 'BUY')  { score += c.weight; buyReasons.push(c.reason);  }
   });
 
   const sellCount = checks.filter(c => c.dir === 'SELL').length;
   const buyCount  = checks.filter(c => c.dir === 'BUY').length;
-  const strength  = Math.min(Math.abs(score) / 6, 1); // 0 a 1
 
-  // Critérios para gerar sinal real (evita sinais fracos):
-  // Score ≤ -4 E pelo menos 4 indicadores vendedores E volume confirmando
-  if (score <= -4 && sellCount >= 4 && volume.isHigh) {
+  // Força do sinal: 0 a 1 baseado no score ponderado (máximo teórico ~8)
+  const strength = Math.min(Math.abs(score) / 8, 1);
+
+  // ── Critério de geração do sinal ─────────────────────────────────────────────
+  // Regra: 4+ indicadores na mesma direção E score ponderado ≥ 3.0
+  // Volume não bloqueia — aparece apenas como informação na UI
+  if (sellCount >= 4 && score <= -3.0) {
     return {
-      signal:   'SELL',
+      signal:    'SELL',
       strength,
       score,
-      reasons:  sellReasons,
+      reasons:   sellReasons,
       sellCount,
       buyCount,
+      volumeInfo: volume
+        ? `Volume ${volume.isHigh ? 'alto' : 'baixo'} (${volume.ratio.toFixed(1)}x média)`
+        : null,
     };
   }
-  if (score >= 4 && buyCount >= 4 && volume.isHigh) {
+
+  if (buyCount >= 4 && score >= 3.0) {
     return {
-      signal:   'BUY',
+      signal:    'BUY',
       strength,
       score,
-      reasons:  buyReasons,
+      reasons:   buyReasons,
       sellCount,
       buyCount,
+      volumeInfo: volume
+        ? `Volume ${volume.isHigh ? 'alto' : 'baixo'} (${volume.ratio.toFixed(1)}x média)`
+        : null,
     };
   }
 
   return {
-    signal:   'HOLD',
-    strength: 0,
+    signal:    'HOLD',
+    strength:  0,
     score,
-    reasons:  ['Confluência insuficiente para gerar sinal'],
+    reasons:   ['Confluência insuficiente — aguardando 4+ indicadores alinhados'],
     sellCount,
     buyCount,
+    volumeInfo: volume
+      ? `Volume ${volume.isHigh ? 'alto' : 'baixo'} (${volume.ratio.toFixed(1)}x média)`
+      : null,
   };
 }
