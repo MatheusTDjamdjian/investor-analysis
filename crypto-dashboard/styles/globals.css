@@ -1,0 +1,127 @@
+@import "tailwindcss";
+
+:root {
+  --bg-base: #07090f;
+  --bg-elev: #0e1119;
+  --bg-card: rgba(20, 24, 34, 0.6);
+  --border-soft: rgba(255, 255, 255, 0.06);
+  --border-mid: rgba(255, 255, 255, 0.1);
+  --text-primary: #f1f3f8;
+  --text-secondary: #8a91a8;
+  --text-muted: #5a6079;
+  --accent: #6e8cff;
+  --accent-2: #b478ff;
+  --green: #1fd087;
+  --red: #ff5d5d;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui,
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background:
+    radial-gradient(1200px 600px at 80% -10%, rgba(110, 140, 255, 0.18), transparent 60%),
+    radial-gradient(900px 600px at -10% 30%, rgba(180, 120, 255, 0.12), transparent 60%),
+    radial-gradient(800px 500px at 50% 110%, rgba(31, 208, 135, 0.08), transparent 60%),
+    var(--bg-base);
+  min-height: 100vh;
+}
+
+button {
+  font-family: inherit;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+@keyframes pulse-dot {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.55;
+    transform: scale(0.92);
+  }
+}
+
+@keyframes flash-up {
+  0% {
+    background: rgba(31, 208, 135, 0.18);
+  }
+  100% {
+    background: transparent;
+  }
+}
+
+@keyframes flash-down {
+  0% {
+    background: rgba(255, 93, 93, 0.18);
+  }
+  100% {
+    background: transparent;
+  }
+}
+
+.flash-up {
+  animation: flash-up 0.6s ease-out;
+}
+.flash-down {
+  animation: flash-down 0.6s ease-out;
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.04) 0%,
+    rgba(255, 255, 255, 0.1) 50%,
+    rgba(255, 255, 255, 0.04) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.6s ease-in-out infinite;
+}
+
+.glass {
+  background: var(--bg-card);
+  backdrop-filter: blur(12px) saturate(140%);
+  -webkit-backdrop-filter: blur(12px) saturate(140%);
+  border: 1px solid var(--border-soft);
+}
+
+.gradient-text {
+  background: linear-gradient(120deg, #fff 0%, #b9c6ff 50%, #d9b7ff 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
