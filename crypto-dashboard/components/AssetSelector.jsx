@@ -1,9 +1,7 @@
-// components/CryptoSelector.jsx
-// Lista horizontal de criptoativos selecionáveis.
+// components/AssetSelector.jsx
+// Lista horizontal de ativos selecionáveis da categoria ativa.
 
-import { COINS } from '@/lib/coins';
-
-export default function CryptoSelector({ active, onSelect }) {
+export default function AssetSelector({ assets, active, onSelect }) {
   return (
     <div
       style={{
@@ -13,12 +11,12 @@ export default function CryptoSelector({ active, onSelect }) {
         padding: '4px 2px',
       }}
     >
-      {COINS.map((coin) => {
-        const isActive = coin.symbol === active;
+      {assets.map((asset) => {
+        const isActive = asset.symbol === active;
         return (
           <button
-            key={coin.symbol}
-            onClick={() => onSelect(coin.symbol)}
+            key={asset.symbol}
+            onClick={() => onSelect(asset.symbol)}
             style={{
               flex: '0 0 auto',
               minWidth: 96,
@@ -48,17 +46,17 @@ export default function CryptoSelector({ active, onSelect }) {
                 fontWeight: 700,
                 letterSpacing: 0.3,
                 background: isActive
-                  ? `linear-gradient(120deg, ${coin.gradient[0]}, ${coin.gradient[1]})`
+                  ? `linear-gradient(120deg, ${asset.gradient[0]}, ${asset.gradient[1]})`
                   : 'transparent',
                 WebkitBackgroundClip: isActive ? 'text' : 'unset',
                 backgroundClip: isActive ? 'text' : 'unset',
                 WebkitTextFillColor: isActive ? 'transparent' : 'inherit',
               }}
             >
-              {coin.base}
+              {asset.base}
             </span>
-            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-              {coin.name}
+            <span style={{ fontSize: 11, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+              {asset.name}
             </span>
           </button>
         );

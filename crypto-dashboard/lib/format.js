@@ -41,9 +41,19 @@ export function formatPct(value, decimals = 2) {
   return `${sign}${value.toFixed(decimals)}%`;
 }
 
-export function convert(value, rate, target = 'USD') {
-  if (value == null) return null;
-  if (target === 'USD') return value;
+// Fator multiplicativo para converter de `from` para `target`.
+// rate = cotação USD→BRL. Retorna null se a conversão exige a cotação e ela
+// ainda não chegou.
+export function conversionFactor(rate, target = 'USD', from = 'USD') {
+  if (target === from) return 1;
   if (!rate) return null;
-  return value * rate;
+  if (from === 'USD' && target === 'BRL') return rate;
+  if (from === 'BRL' && target === 'USD') return 1 / rate;
+  return null;
+}
+
+export function convert(value, rate, target = 'USD', from = 'USD') {
+  if (value == null) return null;
+  const f = conversionFactor(rate, target, from);
+  return f == null ? null : value * f;
 }

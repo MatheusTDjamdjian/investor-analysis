@@ -31,6 +31,14 @@ export function useCrypto(symbol = 'BTCUSDT', interval = '15m') {
   const [status, setStatus] = useState('connecting');
 
   useEffect(() => {
+    // Estado limpo imediatamente — evita renderizar dados da cripto anterior
+    setCandles([]);
+    setTicker(null);
+    setStatus('connecting');
+
+    // symbol = null desliga o hook (categoria ativa não é cripto)
+    if (!symbol) return undefined;
+
     const session = { active: true };
     const expectedPrefix = `${symbol.toLowerCase()}@`;
 
@@ -38,11 +46,6 @@ export function useCrypto(symbol = 'BTCUSDT', interval = '15m') {
     let reconnectTimer = null;
     let pollTimer = null;
     let lastWsTickerAt = 0;
-
-    // Estado limpo imediatamente — evita renderizar dados da cripto anterior
-    setCandles([]);
-    setTicker(null);
-    setStatus('connecting');
 
     // ── parsers ──────────────────────────────────────────────────────────
     const parseCandle = (k) => ({

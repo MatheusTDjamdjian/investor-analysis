@@ -1,18 +1,21 @@
 // pages/index.jsx
-// Dashboard único de análise de criptoativos.
+// Dashboard único de análise de ativos.
 // Funcionalidades:
-//   - Alternar entre criptoativos (BTC, ETH, SOL, BNB, XRP, ADA, AVAX, DOGE)
+//   - Menu de categorias: Criptomoedas, Ações Brasil (B3) e Ações Globais
+//   - Alternar entre os ativos de cada categoria
 //   - Alternar moeda fiat de exibição (USD / BRL)
 //   - Gráfico de candles em tempo real (lightweight-charts)
-//   - Preço, variação 24h, máxima, mínima, volume — todos ao vivo
+//   - Preço, variação, máxima, mínima, volume — todos ao vivo
 //
+// Cripto: WebSocket Binance. Ações: polling do Yahoo Finance via proxy.
 // O lightweight-charts depende de window, então o gráfico só renderiza no client.
 
 import Head from 'next/head';
 import dynamic from 'next/dynamic';
 import { useState } from 'react';
 
-import CryptoSelector from '@/components/CryptoSelector';
+import AssetSelector from '@/components/AssetSelector';
+import CategoryTabs from '@/components/CategoryTabs';
 import CurrencyToggle from '@/components/CurrencyToggle';
 import PriceHeader from '@/components/PriceHeader';
 import StatsGrid from '@/components/StatsGrid';
@@ -20,7 +23,9 @@ import TimeframeBar from '@/components/TimeframeBar';
 
 import { useCrypto } from '@/hooks/useCrypto';
 import { useExchangeRate } from '@/hooks/useExchangeRate';
-import { findCoin } from '@/lib/coins';
+import { useStock } from '@/hooks/useStock';
+import { CATEGORIES, findAsset, findCategory } from '@/lib/categories';
+import { conversionFactor } from '@/lib/format';
 
 const CandleChart = dynamic(() => import('@/components/CandleChart'), {
   ssr: false,
@@ -35,22 +40,45 @@ const CandleChart = dynamic(() => import('@/components/CandleChart'), {
   ),
 });
 
+// Ativo selecionado em cada categoria (preservado ao alternar entre elas).
+const INITIAL_SELECTION = Object.fromEntries(
+  CATEGORIES.map((c) => [c.id, c.assets[0].symbol]),
+);
+
 export default function Home() {
-  const [symbol, setSymbol] = useState('BTCUSDT');
+  const [categoryId, setCategoryId] = useState('crypto');
+  const [selection, setSelection] = useState(INITIAL_SELECTION);
   const [timeframe, setTimeframe] = useState('15m');
   const [currency, setCurrency] = useState('USD');
 
-  const coin = findCoin(symbol);
-  const { candles, ticker, status } = useCrypto(symbol, timeframe);
+  const category = findCategory(categoryId);
+  const asset = findAsset(category, selection[categoryId]);
+  const isCrypto = category.source === 'binance';
+
+  // Só um dos hooks fica ativo por vez; o outro recebe null e fica ocioso.
+  const cryptoData = useCrypto(isCrypto ? asset.symbol : null, timeframe);
+  const stockData = useStock(isCrypto ? null : asset.symbol, timeframe);
+  const { candles, ticker, status } = isCrypto ? cryptoData : stockData;
+
   const { rate, updatedAt } = useExchangeRate();
+  const factor = conversionFactor(rate, currency, category.quote) ?? 1;
+
+  const selectCategory = (id) => {
+    setCategoryId(id);
+    // Exibe cada categoria na moeda nativa por padrão (ações B3 em reais).
+    setCurrency(findCategory(id).quote);
+  };
+
+  const selectAsset = (symbol) =>
+    setSelection((prev) => ({ ...prev, [categoryId]: symbol }));
 
   return (
     <>
       <Head>
-        <title>CryptoDashboard · Análise de preços em tempo real</title>
+        <title>CryptoDashboard · Cripto e ações em tempo real</title>
         <meta
           name="description"
-          content="Acompanhe preços de criptomoedas em tempo real, em dólar e em real, com gráficos ao vivo."
+          content="Acompanhe criptomoedas, ações brasileiras e ações globais em tempo real, em dólar e em real, com gráficos ao vivo."
         />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
@@ -97,7 +125,7 @@ export default function Home() {
                 CryptoDashboard
               </div>
               <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                Análise de preços em tempo real
+                Cripto e ações em tempo real
               </div>
             </div>
           </div>
@@ -107,15 +135,20 @@ export default function Home() {
             onChange={setCurrency}
             rate={rate}
             updatedAt={updatedAt}
+            showRate={currency !== category.quote}
           />
         </header>
 
-        {/* Seletor de criptoativo */}
-        <CryptoSelector active={symbol} onSelect={setSymbol} />
+        {/* Menu de categorias + ativos da categoria */}
+        <section style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <CategoryTabs active={categoryId} onSelect={selectCategory} />
+          <AssetSelector assets={category.assets} active={asset.symbol} onSelect={selectAsset} />
+        </section>
 
         {/* Header de preço */}
         <PriceHeader
-          coin={coin}
+          asset={asset}
+          category={category}
           ticker={ticker}
           currency={currency}
           rate={rate}
@@ -123,18 +156,18 @@ export default function Home() {
         />
 
         {/* Stats grid */}
-        <StatsGrid ticker={ticker} currency={currency} rate={rate} />
+        <StatsGrid ticker={ticker} category={category} currency={currency} rate={rate} />
 
         {/* Timeframes */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
           <TimeframeBar active={timeframe} onSelect={setTimeframe} />
           <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-            {coin.base}/USDT · {timeframe}
+            {category.pair(asset)} · {timeframe}
           </span>
         </div>
 
         {/* Gráfico */}
-        <CandleChart candles={candles} currency={currency} rate={rate} />
+        <CandleChart candles={candles} factor={factor} />
 
         {/* Rodapé */}
         <footer
@@ -145,7 +178,8 @@ export default function Home() {
             textAlign: 'center',
           }}
         >
-          Dados: Binance · Cotação BRL: AwesomeAPI · Apenas para fins informativos.
+          Dados: Binance (cripto) · Yahoo Finance (ações, pode haver atraso conforme a bolsa) ·
+          Cotação BRL: AwesomeAPI · Apenas para fins informativos.
         </footer>
       </main>
     </>

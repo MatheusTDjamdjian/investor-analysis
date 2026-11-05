@@ -1,7 +1,8 @@
 // components/CurrencyToggle.jsx
 // Toggle entre dólar (USD) e real (BRL).
+// showRate: exibe a cotação USD-BRL quando há conversão em curso.
 
-export default function CurrencyToggle({ currency, onChange, rate, updatedAt }) {
+export default function CurrencyToggle({ currency, onChange, rate, updatedAt, showRate }) {
   const options = ['USD', 'BRL'];
 
   return (
@@ -49,7 +50,7 @@ export default function CurrencyToggle({ currency, onChange, rate, updatedAt }) 
         })}
       </div>
 
-      {currency === 'BRL' && (
+      {showRate && (
         <span
           style={{
             fontSize: 11,

@@ -10,16 +10,16 @@ import {
   CrosshairMode,
 } from 'lightweight-charts';
 
-const formatTime = (ms) => Math.floor(ms / 1000);
+// factor: multiplica OHLC (conversão de moeda: USD↔BRL)
+// c.off:  offset UTC opcional do candle (ações). lightweight-charts exibe em
+//         UTC, então o deslocamento faz o pregão aparecer no horário da bolsa.
+const toChartTime = (c) => Math.floor(c.t / 1000) + (c.off ?? 0);
 
-export default function CandleChart({ candles, currency, rate }) {
+export default function CandleChart({ candles, factor = 1 }) {
   const containerRef = useRef(null);
   const chartRef = useRef(null);
   const candleSeriesRef = useRef(null);
   const volumeSeriesRef = useRef(null);
-
-  // priceScale: multiplica candle.close por rate quando BRL
-  const factor = currency === 'BRL' && rate ? rate : 1;
 
   // Setup do gráfico (uma vez)
   useEffect(() => {
@@ -107,7 +107,7 @@ export default function CandleChart({ candles, currency, rate }) {
     }
 
     const candleData = candles.map((c) => ({
-      time: formatTime(c.t),
+      time: toChartTime(c),
       open: c.open * factor,
       high: c.high * factor,
       low: c.low * factor,
@@ -115,7 +115,7 @@ export default function CandleChart({ candles, currency, rate }) {
     }));
 
     const volumeData = candles.map((c) => ({
-      time: formatTime(c.t),
+      time: toChartTime(c),
       value: c.vol,
       color:
         c.close >= c.open

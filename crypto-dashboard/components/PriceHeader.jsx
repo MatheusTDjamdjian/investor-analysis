@@ -5,16 +5,17 @@
 import { useEffect, useRef, useState } from 'react';
 import { convert, formatMoney, formatPct } from '@/lib/format';
 
-export default function PriceHeader({ coin, ticker, currency, rate, status }) {
+export default function PriceHeader({ asset, category, ticker, currency, rate, status }) {
+  const isCrypto = category.source === 'binance';
   const [flash, setFlash] = useState(null);
   const prevPrice = useRef(null);
 
-  // Reseta o preço anterior sempre que a cripto muda — evita flash espúrio
+  // Reseta o preço anterior sempre que o ativo muda — evita flash espúrio
   // ao trocar de BTC (US$ 100k) para ETH (US$ 4k), por exemplo.
   useEffect(() => {
     prevPrice.current = null;
     setFlash(null);
-  }, [coin.symbol]);
+  }, [asset.symbol]);
 
   useEffect(() => {
     if (!ticker?.price) {
@@ -30,13 +31,18 @@ export default function PriceHeader({ coin, ticker, currency, rate, status }) {
     prevPrice.current = ticker.price;
   }, [ticker?.price]);
 
-  const price = convert(ticker?.price, rate, currency);
+  const price = convert(ticker?.price, rate, currency, category.quote);
   const change = ticker?.change;
   const isUp = (change ?? 0) >= 0;
+
+  const lastQuote = ticker?.marketTime
+    ? new Date(ticker.marketTime).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
+    : '—';
 
   const dotColor = {
     live: 'var(--green)',
     connecting: '#e8a232',
+    closed: 'var(--text-muted)',
     error: 'var(--red)',
   }[status] || 'var(--text-muted)';
 
@@ -60,22 +66,22 @@ export default function PriceHeader({ coin, ticker, currency, rate, status }) {
             width: 56,
             height: 56,
             borderRadius: 16,
-            background: `linear-gradient(135deg, ${coin.gradient[0]}, ${coin.gradient[1]})`,
+            background: `linear-gradient(135deg, ${asset.gradient[0]}, ${asset.gradient[1]})`,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             fontWeight: 800,
-            fontSize: 18,
+            fontSize: asset.base.length > 4 ? 13 : 18,
             color: '#fff',
             letterSpacing: 0.5,
-            boxShadow: `0 10px 32px -12px ${coin.gradient[0]}80`,
+            boxShadow: `0 10px 32px -12px ${asset.gradient[0]}80`,
           }}
         >
-          {coin.base}
+          {asset.base}
         </div>
         <div>
           <div style={{ fontSize: 12, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 1.5 }}>
-            {coin.name} · {coin.base}/USDT
+            {asset.name} · {category.pair(asset)}
           </div>
           <div
             style={{
@@ -97,7 +103,8 @@ export default function PriceHeader({ coin, ticker, currency, rate, status }) {
                 boxShadow: status === 'live' ? '0 0 12px var(--green)' : 'none',
               }}
             />
-            {status === 'live' && 'Ao vivo · Binance'}
+            {status === 'live' && `Ao vivo · ${category.sourceLabel}`}
+            {status === 'closed' && `Mercado fechado · última cotação ${lastQuote}`}
             {status === 'connecting' && 'Conectando…'}
             {status === 'error' && 'Erro de conexão'}
           </div>
@@ -143,7 +150,7 @@ export default function PriceHeader({ coin, ticker, currency, rate, status }) {
         >
           <span style={{ fontSize: 11 }}>{isUp ? '▲' : '▼'}</span>
           {formatPct(change)}
-          <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}>24h</span>
+          <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}>{isCrypto ? '24h' : 'hoje'}</span>
         </div>
       </div>
     </div>

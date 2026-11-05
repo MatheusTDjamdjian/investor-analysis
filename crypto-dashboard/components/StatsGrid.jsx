@@ -1,30 +1,41 @@
 // components/StatsGrid.jsx
-// Métricas 24h: máxima, mínima, volume, número de trades.
+// Métricas do ativo:
+//   - cripto: máxima, mínima, volume e nº de negociações (janela de 24h)
+//   - ações:  máxima, mínima, volume do pregão e fechamento anterior
 
 import { convert, formatCompact, formatMoney } from '@/lib/format';
 
-export default function StatsGrid({ ticker, currency, rate }) {
-  const items = [
-    {
-      label: 'Máxima 24h',
-      value: ticker ? formatMoney(convert(ticker.high24h, rate, currency), currency) : '—',
-      accent: 'var(--green)',
-    },
-    {
-      label: 'Mínima 24h',
-      value: ticker ? formatMoney(convert(ticker.low24h, rate, currency), currency) : '—',
-      accent: 'var(--red)',
-    },
-    {
-      label: 'Volume 24h',
-      value: ticker ? formatCompact(ticker.volume) : '—',
-      sub: ticker ? `${formatCompact(ticker.quoteVol)} USDT` : '—',
-    },
-    {
-      label: 'Negociações 24h',
-      value: ticker ? formatCompact(ticker.trades) : '—',
-    },
-  ];
+export default function StatsGrid({ ticker, category, currency, rate }) {
+  const money = (v) =>
+    ticker ? formatMoney(convert(v, rate, currency, category.quote), currency) : '—';
+
+  const items =
+    category.source === 'binance'
+      ? [
+          { label: 'Máxima 24h', value: money(ticker?.high24h), accent: 'var(--green)' },
+          { label: 'Mínima 24h', value: money(ticker?.low24h), accent: 'var(--red)' },
+          {
+            label: 'Volume 24h',
+            value: ticker ? formatCompact(ticker.volume) : '—',
+            sub: ticker ? `${formatCompact(ticker.quoteVol)} USDT` : '—',
+          },
+          { label: 'Negociações 24h', value: ticker ? formatCompact(ticker.trades) : '—' },
+        ]
+      : [
+          { label: 'Máxima do dia', value: money(ticker?.high24h), accent: 'var(--green)' },
+          { label: 'Mínima do dia', value: money(ticker?.low24h), accent: 'var(--red)' },
+          {
+            label: 'Volume do dia',
+            value: ticker ? `${formatCompact(ticker.volume)} ações` : '—',
+          },
+          {
+            label: 'Fechamento anterior',
+            value: money(ticker?.prevClose),
+            sub: ticker
+              ? `52 sem.: ${money(ticker.fiftyTwoWeekLow)} – ${money(ticker.fiftyTwoWeekHigh)}`
+              : undefined,
+          },
+        ];
 
   return (
     <div
