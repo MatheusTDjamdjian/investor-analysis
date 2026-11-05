@@ -15,7 +15,22 @@ import {
 //         UTC, então o deslocamento faz o pregão aparecer no horário da bolsa.
 const toChartTime = (c) => Math.floor(c.t / 1000) + (c.off ?? 0);
 
-export default function CandleChart({ candles, factor = 1 }) {
+// Espelha os tokens de styles/globals.css (o canvas não lê variáveis CSS).
+const THEME = {
+  text: '#5d6470',
+  grid: 'rgba(255,255,255,0.035)',
+  border: '#1d2127',
+  crosshair: 'rgba(94,225,255,0.35)',
+  label: '#1a1e23',
+  up: '#2fd897',
+  down: '#ff5c7a',
+  volUp: 'rgba(47,216,151,0.28)',
+  volDown: 'rgba(255,92,122,0.28)',
+};
+
+// title:   rótulo do cabeçalho do painel
+// toolbar: controles exibidos à direita do cabeçalho (ex.: timeframes)
+export default function CandleChart({ candles, factor = 1, title = 'Gráfico', toolbar = null }) {
   const containerRef = useRef(null);
   const chartRef = useRef(null);
   const candleSeriesRef = useRef(null);
@@ -29,57 +44,48 @@ export default function CandleChart({ candles, factor = 1 }) {
       autoSize: true,
       layout: {
         background: { type: 'solid', color: 'transparent' },
-        textColor: '#8a91a8',
-        fontSize: 11,
-        fontFamily: 'Inter, system-ui, sans-serif',
+        textColor: THEME.text,
+        fontSize: 10.5,
+        fontFamily: '"JetBrains Mono", ui-monospace, monospace',
+        attributionLogo: false,
       },
       grid: {
-        vertLines: { color: 'rgba(255,255,255,0.04)' },
-        horzLines: { color: 'rgba(255,255,255,0.04)' },
+        vertLines: { color: THEME.grid },
+        horzLines: { color: THEME.grid },
       },
       crosshair: {
         mode: CrosshairMode.Normal,
-        vertLine: {
-          color: 'rgba(110,140,255,0.4)',
-          width: 1,
-          style: 3,
-          labelBackgroundColor: '#6e8cff',
-        },
-        horzLine: {
-          color: 'rgba(110,140,255,0.4)',
-          width: 1,
-          style: 3,
-          labelBackgroundColor: '#6e8cff',
-        },
+        vertLine: { color: THEME.crosshair, width: 1, style: 3, labelBackgroundColor: THEME.label },
+        horzLine: { color: THEME.crosshair, width: 1, style: 3, labelBackgroundColor: THEME.label },
       },
       rightPriceScale: {
-        borderColor: 'rgba(255,255,255,0.06)',
+        borderColor: THEME.border,
         scaleMargins: { top: 0.08, bottom: 0.22 },
       },
       timeScale: {
-        borderColor: 'rgba(255,255,255,0.06)',
+        borderColor: THEME.border,
         timeVisible: true,
         secondsVisible: false,
       },
     });
 
     const candleSeries = chart.addSeries(CandlestickSeries, {
-      upColor: '#1fd087',
-      downColor: '#ff5d5d',
-      borderUpColor: '#1fd087',
-      borderDownColor: '#ff5d5d',
-      wickUpColor: 'rgba(31,208,135,0.6)',
-      wickDownColor: 'rgba(255,93,93,0.6)',
+      upColor: THEME.up,
+      downColor: THEME.down,
+      borderUpColor: THEME.up,
+      borderDownColor: THEME.down,
+      wickUpColor: THEME.up,
+      wickDownColor: THEME.down,
     });
 
     const volumeSeries = chart.addSeries(HistogramSeries, {
       priceFormat: { type: 'volume' },
       priceScaleId: 'volume',
-      color: 'rgba(110,140,255,0.35)',
+      color: THEME.volUp,
     });
 
     chart.priceScale('volume').applyOptions({
-      scaleMargins: { top: 0.82, bottom: 0 },
+      scaleMargins: { top: 0.84, bottom: 0 },
     });
 
     chartRef.current = chart;
@@ -95,7 +101,7 @@ export default function CandleChart({ candles, factor = 1 }) {
   }, []);
 
   // Atualiza dados a cada candle ou troca de moeda.
-  // Quando candles=[] (troca de cripto), limpa o gráfico ao invés de
+  // Quando candles=[] (troca de ativo), limpa o gráfico ao invés de
   // manter os dados anteriores visíveis.
   useEffect(() => {
     if (!candleSeriesRef.current || !volumeSeriesRef.current) return;
@@ -117,10 +123,7 @@ export default function CandleChart({ candles, factor = 1 }) {
     const volumeData = candles.map((c) => ({
       time: toChartTime(c),
       value: c.vol,
-      color:
-        c.close >= c.open
-          ? 'rgba(31,208,135,0.35)'
-          : 'rgba(255,93,93,0.35)',
+      color: c.close >= c.open ? THEME.volUp : THEME.volDown,
     }));
 
     candleSeriesRef.current.setData(candleData);
@@ -128,40 +131,18 @@ export default function CandleChart({ candles, factor = 1 }) {
   }, [candles, factor]);
 
   return (
-    <div
-      className="glass"
-      style={{
-        padding: 16,
-        borderRadius: 20,
-        height: 460,
-        display: 'flex',
-        flexDirection: 'column',
-      }}
-    >
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: 8,
-          paddingLeft: 4,
-        }}
-      >
-        <span
-          style={{
-            fontSize: 11,
-            color: 'var(--text-muted)',
-            textTransform: 'uppercase',
-            letterSpacing: 1.2,
-          }}
-        >
-          Gráfico em tempo real
+    <section className="panel chart-panel">
+      <div className="chart-head">
+        <span className="label">
+          {title}
+          <span style={{ marginLeft: 10, color: 'var(--border-strong)' }}>│</span>
+          <span style={{ marginLeft: 10 }}>{candles.length} candles</span>
         </span>
-        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-          {candles.length} candles
-        </span>
+        {toolbar}
       </div>
-      <div ref={containerRef} style={{ flex: 1, minHeight: 0 }} />
-    </div>
+      <div className="chart-body">
+        <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
+      </div>
+    </section>
   );
 }

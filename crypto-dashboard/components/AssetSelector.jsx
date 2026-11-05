@@ -1,66 +1,32 @@
 // components/AssetSelector.jsx
-// Lista horizontal de ativos selecionáveis da categoria ativa.
+// Watchlist com os ativos da categoria ativa.
+// Desktop: coluna lateral. Telas estreitas: faixa horizontal rolável (ver globals.css).
 
-export default function AssetSelector({ assets, active, onSelect }) {
+import { swatchColor } from '@/lib/categories';
+
+export default function AssetSelector({ title, assets, active, onSelect }) {
   return (
-    <div
-      style={{
-        display: 'flex',
-        gap: 8,
-        overflowX: 'auto',
-        padding: '4px 2px',
-      }}
-    >
-      {assets.map((asset) => {
-        const isActive = asset.symbol === active;
-        return (
+    <aside className="panel watchlist" aria-label={title}>
+      <div className="watchlist-head">
+        <span className="label">{title}</span>
+        <span className="label">{String(assets.length).padStart(2, '0')}</span>
+      </div>
+      <div className="watchlist-list">
+        {assets.map((asset) => (
           <button
             key={asset.symbol}
+            className="watch-item"
+            aria-current={asset.symbol === active}
             onClick={() => onSelect(asset.symbol)}
-            style={{
-              flex: '0 0 auto',
-              minWidth: 96,
-              padding: '10px 14px',
-              borderRadius: 12,
-              cursor: 'pointer',
-              border: `1px solid ${isActive ? 'rgba(110,140,255,0.5)' : 'var(--border-soft)'}`,
-              background: isActive
-                ? 'linear-gradient(135deg, rgba(110,140,255,0.22), rgba(180,120,255,0.18))'
-                : 'rgba(20,24,34,0.55)',
-              color: isActive ? '#fff' : 'var(--text-secondary)',
-              backdropFilter: 'blur(10px)',
-              WebkitBackdropFilter: 'blur(10px)',
-              transition: 'all 160ms ease',
-              textAlign: 'left',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 2,
-              boxShadow: isActive
-                ? '0 8px 24px -10px rgba(110,140,255,0.45)'
-                : 'none',
-            }}
           >
-            <span
-              style={{
-                fontSize: 13,
-                fontWeight: 700,
-                letterSpacing: 0.3,
-                background: isActive
-                  ? `linear-gradient(120deg, ${asset.gradient[0]}, ${asset.gradient[1]})`
-                  : 'transparent',
-                WebkitBackgroundClip: isActive ? 'text' : 'unset',
-                backgroundClip: isActive ? 'text' : 'unset',
-                WebkitTextFillColor: isActive ? 'transparent' : 'inherit',
-              }}
-            >
-              {asset.base}
-            </span>
-            <span style={{ fontSize: 11, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-              {asset.name}
+            <span className="watch-swatch" style={{ background: swatchColor(asset) }} />
+            <span style={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: 0 }}>
+              <span className="watch-ticker">{asset.base}</span>
+              <span className="watch-name">{asset.name}</span>
             </span>
           </button>
-        );
-      })}
-    </div>
+        ))}
+      </div>
+    </aside>
   );
 }

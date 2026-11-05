@@ -1,4 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Rising chart line favicon">
-  <rect width="64" height="64" rx="14" fill="#0f172a"/>
-  <path d="M14 42 L26 32 L38 36 L50 22" fill="none" stroke="#f59e0b" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Investor Analysis">
+  <rect x="1" y="1" width="62" height="62" rx="15" fill="#0e1013" stroke="#2a3038" stroke-width="2"/>
+  <rect x="15" y="35" width="7" height="15" rx="2" fill="#5d6470"/>
+  <rect x="28.5" y="25" width="7" height="25" rx="2" fill="#9ba2ad"/>
+  <rect x="42" y="14" width="7" height="36" rx="2" fill="#5ee1ff"/>
 </svg>

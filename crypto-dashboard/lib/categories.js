@@ -44,5 +44,17 @@ export const CATEGORIES = [
 export const findCategory = (id) =>
   CATEGORIES.find((c) => c.id === id) ?? CATEGORIES[0];
 
+// Cor de destaque do ativo: a mais clara das duas cores da marca, para
+// continuar visível sobre o fundo escuro (ex.: XRP, BTG, Itaúsa).
+const luminance = (hex) => {
+  const n = parseInt(hex.slice(1), 16);
+  return 0.2126 * ((n >> 16) & 255) + 0.7152 * ((n >> 8) & 255) + 0.0722 * (n & 255);
+};
+
+export const swatchColor = (asset) => {
+  const [a, b] = asset.gradient;
+  return luminance(a) >= 70 || luminance(a) >= luminance(b) ? a : b;
+};
+
 export const findAsset = (category, symbol) =>
   category.assets.find((a) => a.symbol === symbol) ?? category.assets[0];

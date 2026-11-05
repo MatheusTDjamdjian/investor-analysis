@@ -12,8 +12,8 @@ export default function StatsGrid({ ticker, category, currency, rate }) {
   const items =
     category.source === 'binance'
       ? [
-          { label: 'Máxima 24h', value: money(ticker?.high24h), accent: 'var(--green)' },
-          { label: 'Mínima 24h', value: money(ticker?.low24h), accent: 'var(--red)' },
+          { label: 'Máxima 24h', value: money(ticker?.high24h), accent: 'var(--up)' },
+          { label: 'Mínima 24h', value: money(ticker?.low24h), accent: 'var(--down)' },
           {
             label: 'Volume 24h',
             value: ticker ? formatCompact(ticker.volume) : '—',
@@ -22,8 +22,8 @@ export default function StatsGrid({ ticker, category, currency, rate }) {
           { label: 'Negociações 24h', value: ticker ? formatCompact(ticker.trades) : '—' },
         ]
       : [
-          { label: 'Máxima do dia', value: money(ticker?.high24h), accent: 'var(--green)' },
-          { label: 'Mínima do dia', value: money(ticker?.low24h), accent: 'var(--red)' },
+          { label: 'Máxima do dia', value: money(ticker?.high24h), accent: 'var(--up)' },
+          { label: 'Mínima do dia', value: money(ticker?.low24h), accent: 'var(--down)' },
           {
             label: 'Volume do dia',
             value: ticker ? `${formatCompact(ticker.volume)} ações` : '—',
@@ -38,52 +38,16 @@ export default function StatsGrid({ ticker, category, currency, rate }) {
         ];
 
   return (
-    <div
-      style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
-        gap: 12,
-      }}
-    >
+    <section className="panel stats">
       {items.map((it) => (
-        <div
-          key={it.label}
-          className="glass"
-          style={{
-            padding: '16px 18px',
-            borderRadius: 16,
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 6,
-          }}
-        >
-          <div
-            style={{
-              fontSize: 11,
-              color: 'var(--text-muted)',
-              textTransform: 'uppercase',
-              letterSpacing: 1,
-            }}
-          >
-            {it.label}
-          </div>
-          <div
-            style={{
-              fontSize: 18,
-              fontWeight: 600,
-              color: it.accent || 'var(--text-primary)',
-              fontVariantNumeric: 'tabular-nums',
-            }}
-          >
+        <div key={it.label} className="stat">
+          <span className="label">{it.label}</span>
+          <span className="stat-value" style={{ color: it.accent || 'var(--text)' }}>
             {it.value}
-          </div>
-          {it.sub && (
-            <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-              {it.sub}
-            </div>
-          )}
+          </span>
+          {it.sub && <span className="stat-sub">{it.sub}</span>}
         </div>
       ))}
-    </div>
+    </section>
   );
 }

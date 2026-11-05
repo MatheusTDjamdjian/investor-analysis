@@ -1,5 +1,5 @@
 // pages/index.jsx
-// Dashboard único de análise de ativos.
+// Investor Analysis — terminal de mercado (página única).
 // Funcionalidades:
 //   - Menu de categorias: Criptomoedas, Ações Brasil (B3) e Ações Globais
 //   - Alternar entre os ativos de cada categoria
@@ -17,6 +17,7 @@ import { useState } from 'react';
 import AssetSelector from '@/components/AssetSelector';
 import CategoryTabs from '@/components/CategoryTabs';
 import CurrencyToggle from '@/components/CurrencyToggle';
+import Logo from '@/components/Logo';
 import PriceHeader from '@/components/PriceHeader';
 import StatsGrid from '@/components/StatsGrid';
 import TimeframeBar from '@/components/TimeframeBar';
@@ -29,15 +30,7 @@ import { conversionFactor } from '@/lib/format';
 
 const CandleChart = dynamic(() => import('@/components/CandleChart'), {
   ssr: false,
-  loading: () => (
-    <div
-      className="glass shimmer"
-      style={{
-        borderRadius: 20,
-        height: 460,
-      }}
-    />
-  ),
+  loading: () => <div className="panel chart-panel shimmer" />,
 });
 
 // Ativo selecionado em cada categoria (preservado ao alternar entre elas).
@@ -75,60 +68,25 @@ export default function Home() {
   return (
     <>
       <Head>
-        <title>CryptoDashboard · Cripto e ações em tempo real</title>
+        <title>{`${asset.base} · Investor Analysis`}</title>
         <meta
           name="description"
-          content="Acompanhe criptomoedas, ações brasileiras e ações globais em tempo real, em dólar e em real, com gráficos ao vivo."
+          content="Investor Analysis — terminal de mercado com criptomoedas, ações da B3 e ações globais em tempo real, em dólar ou real."
         />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
 
-      <main
-        style={{
-          maxWidth: 1200,
-          margin: '0 auto',
-          padding: '32px 24px 60px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 20,
-        }}
-      >
-        {/* Top bar */}
-        <header
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            flexWrap: 'wrap',
-            gap: 16,
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: 10,
-                background: 'linear-gradient(135deg, #6e8cff, #b478ff)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontWeight: 800,
-                fontSize: 16,
-                boxShadow: '0 8px 24px -10px rgba(110,140,255,0.6)',
-              }}
-            >
-              ◈
-            </div>
+      <div className="shell">
+        <header className="topbar">
+          <div className="brand">
+            <Logo size={30} />
             <div>
-              <div className="gradient-text" style={{ fontSize: 20, fontWeight: 800, letterSpacing: -0.4 }}>
-                CryptoDashboard
-              </div>
-              <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                Cripto e ações em tempo real
-              </div>
+              <div className="brand-name">Investor Analysis</div>
+              <div className="brand-tag">market terminal · cripto &amp; ações</div>
             </div>
           </div>
+
+          <CategoryTabs active={categoryId} onSelect={selectCategory} />
 
           <CurrencyToggle
             currency={currency}
@@ -139,49 +97,48 @@ export default function Home() {
           />
         </header>
 
-        {/* Menu de categorias + ativos da categoria */}
-        <section style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <CategoryTabs active={categoryId} onSelect={selectCategory} />
-          <AssetSelector assets={category.assets} active={asset.symbol} onSelect={selectAsset} />
-        </section>
+        <div className="layout">
+          <AssetSelector
+            title={category.label}
+            assets={category.assets}
+            active={asset.symbol}
+            onSelect={selectAsset}
+          />
 
-        {/* Header de preço */}
-        <PriceHeader
-          asset={asset}
-          category={category}
-          ticker={ticker}
-          currency={currency}
-          rate={rate}
-          status={status}
-        />
+          <main className="content">
+            <PriceHeader
+              asset={asset}
+              category={category}
+              ticker={ticker}
+              currency={currency}
+              rate={rate}
+              status={status}
+            />
 
-        {/* Stats grid */}
-        <StatsGrid ticker={ticker} category={category} currency={currency} rate={rate} />
+            <StatsGrid ticker={ticker} category={category} currency={currency} rate={rate} />
 
-        {/* Timeframes */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
-          <TimeframeBar active={timeframe} onSelect={setTimeframe} />
-          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-            {category.pair(asset)} · {timeframe}
-          </span>
+            <CandleChart
+              candles={candles}
+              factor={factor}
+              title={`${category.pair(asset)} · ${timeframe}`}
+              toolbar={<TimeframeBar active={timeframe} onSelect={setTimeframe} />}
+            />
+          </main>
         </div>
 
-        {/* Gráfico */}
-        <CandleChart candles={candles} factor={factor} />
-
-        {/* Rodapé */}
-        <footer
-          style={{
-            marginTop: 12,
-            fontSize: 11,
-            color: 'var(--text-muted)',
-            textAlign: 'center',
-          }}
-        >
-          Dados: Binance (cripto) · Yahoo Finance (ações, pode haver atraso conforme a bolsa) ·
-          Cotação BRL: AwesomeAPI · Apenas para fins informativos.
+        <footer className="footer">
+          <span>
+            Dados: Binance (cripto) · Yahoo Finance (ações, pode haver atraso) · AwesomeAPI (USD/BRL)
+          </span>
+          <span>
+            Gráficos:{' '}
+            <a href="https://www.tradingview.com/" target="_blank" rel="noreferrer" style={{ color: 'var(--text-2)' }}>
+              TradingView Lightweight Charts
+            </a>{' '}
+            · Apenas para fins informativos.
+          </span>
         </footer>
-      </main>
+      </div>
     </>
   );
 }
