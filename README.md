@@ -1,6 +1,6 @@
-# Crypto Dashboard
+# Investor Analysis
 
-Dashboard de monitoramento de mercado em tempo real, com gráfico de candles ao vivo
+Terminal de mercado minimalista para acompanhar ativos em tempo real, com gráfico de candles ao vivo
 e alternância entre dólar (USD) e real (BRL). Os ativos são organizados em três
 categorias: **Criptomoedas**, **Ações Brasil** (10 maiores da B3) e **Ações Globais**
 (10 maiores do mundo).
@@ -42,6 +42,7 @@ investor-analysis/
     │   ├── CandleChart.jsx         # gráfico de candles + volume
     │   ├── CategoryTabs.jsx        # menu Criptomoedas / Ações Brasil / Ações Globais
     │   ├── CurrencyToggle.jsx      # USD / BRL
+    │   ├── Logo.jsx                # marca (mesmo desenho do favicon)
     │   ├── PriceHeader.jsx         # preço em destaque + variação 24h
     │   ├── StatsGrid.jsx           # máx/mín/volume/trades 24h
     │   └── TimeframeBar.jsx        # 1m / 5m / 15m / 1h / 4h / 1d
@@ -95,7 +96,7 @@ Comandos disponíveis:
 | Ações ao vivo | Polling a cada 5 s com o pregão aberto (30 s fechado); indica "Mercado fechado" fora do horário |
 | Timeframes | 1m, 5m, 15m, 1h, 4h, 1d |
 | Status de conexão | Indicador visual (live / conectando / erro) |
-| UI | Tema escuro com glassmorphism, gradientes por ativo, animação de flash no preço |
+| UI | Estilo terminal minimalista: painéis com bordas finas, acento ciano, números em JetBrains Mono, watchlist lateral (faixa horizontal no mobile) e flash no preço |
 
 ## Decisões de implementação
 
